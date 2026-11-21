@@ -31,14 +31,14 @@ wire [2:0] costB;
 // 1 == busy, 0 == available 
 
 // calling elevatorcost.v instantiating 
-elevatorCost elevatorACost (
+cost elevatorACost (
     .currentFloor(floorA),
     .requestedFloor(requestedFloor),
     .cost(costA)
 );
 // for elevaot rA
 
-elevatorCost elevatorBCost (
+cost elevatorBCost (
     .currentFloor(floorB),
     .requestedFloor(requestedFloor),
     .cost(costB)

@@ -1,4 +1,4 @@
-module elevatorCost(currentFloor, requestedFloor, cost);
+module cost(currentFloor, requestedFloor, cost);
 
 input [2:0] currentFloor;
 input [2:0] requestedFloor;
