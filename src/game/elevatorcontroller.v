@@ -1,4 +1,4 @@
-module elevatorcontroller(clk, reset, move, targetfloor, currentfloor ,elevatordirection, arrival, playerstopped);
+module elevatorcontroller(clk, reset, move, targetfloor, currentfloor ,elevatordirection, arrival, playerstopped, busy);
 
 //purpose of this module is to simulate elevator movement
 // when floors accessed->will move 1 floor per sec
@@ -14,26 +14,40 @@ module elevatorcontroller(clk, reset, move, targetfloor, currentfloor ,elevatord
 // currentfloor = current floor user is on
 //elevatordirection = whether elevator is moving up down or still
 // arrival = tells us when the elevator has reached a floor
-// playerstopped = tells us when the player has stopped (can get caught by guard, since caught is wehn elevators are stopped on same floor)
+// playerstopped = tells us when the elevator has stopped (can get caught by guard, since caught is wehn elevators are stopped on same floor)
+// busy = tells elevatorassignment whether elevator is currently doing a trip (  1 = handling a request, 0 not)
 
 input[0:0] clk, reset, move;
 input[2:0] targetfloor;
 
-output[0:0] arrival, playerstopped;
+output[0:0] arrival, playerstopped, busy;
 output reg[2:0] currentfloor;
 output reg[1:0] elevatordirection;
 
 //MOVEMENT AUTHORIZATION LOGIC
 // must know when moving is allowed -> only when move = 1 ( correct ans to math )
 reg moving; // tells elevator to keep moving if move  = 1 (remembers it)
-assign arrival = (currentfloor == targetfloor); //  arrival is 1 when currentlfoor = targetfloor
+assign busy = moving;
+reg [2:0] savedtarget; //to remember destination when it receives move (prevents changing destinations halfway through trips)
+
+assign arrival = (currentfloor == savedtarget); //  arrival is 1 when currentlfoor = savedtarget
+
 always @(posedge clk) begin
     if(!reset)
     moving <= 0;
-    else if(arrival == 1) 
+    else if(move == 1 && moving == 0) 
+    moving <= (currentfloor != targetfloor);
+    else if(arrival == 1)
     moving <= 0;
-    else if(move == 1)
-    moving <= 1;
+end
+
+always @(posedge clk)begin
+    
+    if(!reset)begin
+        savedtarget <= 3'd0;
+    end else if(move == 1 && moving == 0)begin
+        savedtarget <= targetfloor;
+    end
 end
 
 //DIRECTION LOGIC
@@ -44,14 +58,14 @@ always@(*) begin
     nextstate = currentstate;
 
     case(currentstate)
-    idle: if(!reset || moving == 0 || currentfloor == targetfloor) nextstate = idle;
-    else if(currentfloor < targetfloor) nextstate = up;
+    idle: if(!reset || moving == 0 || currentfloor == savedtarget) nextstate = idle;
+    else if(currentfloor < savedtarget) nextstate = up;
     else nextstate = down;
 
-    up: if(arrival == 1) nextstate = idle; 
+    up: if(moving == 0 || arrival == 1) nextstate = idle; 
     else nextstate = up;
 
-    down: if(arrival == 1) nextstate = idle;
+    down: if(moving == 0 || arrival == 1) nextstate = idle;
     else nextstate = down;
 
     default: nextstate = idle;
@@ -68,13 +82,11 @@ if(!reset) begin
     currentstate <= 0;
 end else
     currentstate <= nextstate;
-    // floor increment and decrement implementation insert here
-   
 end 
 
 // TIMER AND FLOOR MOVEMENT LOGIC
 
-reg [25:0] onesecondcounter;
+reg [25:0] onesecondcounter; //26 bit needed
 
 always @(posedge clk) begin
     if(!reset) begin
