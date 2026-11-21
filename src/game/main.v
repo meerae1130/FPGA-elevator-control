@@ -1,5 +1,9 @@
-// main game controller module 
 module main_controller ();
+    // TOP MODULE 
+
+
+
+    
     // money floor randomization 
     wire [3:0] rando;
     reg  [2:0] money;   // since floor 1-8, 3 bits enough to express 8 diff floors (0-7)
