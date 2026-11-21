@@ -34,14 +34,70 @@
         -> none, only the first person in queue will get on
 */
 
-module queue (clock, reset, newcurr, dest, newreqvalid, outcurr, outreqvalid);
-    input clock, reset, newreqvalid;
-    input [2:0] newcurr, dest;
+module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor, newreqvalid, outcurr, outreqvalid, boardingCount, boardingDest, newreqready);
+    input clock, reset, newreqvalid, reqaccepted, pickupvalid;
+    input [2:0] newcurr, dest, pickupfloor;
 
-    output outreqvalid;
+    output outreqvalid, newreqready;
     output[2:0] outcurr; 
+    output reg [3:0] boardingCount;
+    output [23:0] boardingDest;
     
+    wire enqueue, inready; 
 
+    reg [3:0] waitingCount [0:7];
+    reg [23:0] waitingDest [0:7];
+    reg [7:0] pickupAssigned;
+
+    wire needsPickup, canStore, acceptPassenger, boardGroup;
+
+    assign needsPickup = (waitingCount[newcurr] == 4'd0);
+    assign boardGroup = pickupvalid && pickupAssigned[pickupfloor];
+
+    // Board the existing group first if a new request is for the same floor.
+    assign canStore = (waitingCount[newcurr] < 4'd8) &&
+                      !(boardGroup && (newcurr == pickupfloor));
+
+    assign enqueue = newreqvalid && canStore && needsPickup;
+    assign newreqready = canStore && (!needsPickup || inready);
+    assign acceptPassenger = newreqvalid && newreqready;
+
+    assign boardingDest = waitingDest[pickupfloor];
+
+    always @(*) begin
+        if (boardGroup)
+            boardingCount = waitingCount[pickupfloor];
+        else
+            boardingCount = 4'd0;
+    end
+
+    fifo FIFO1(clock, reset, enqueue, newcurr, inready,
+               outreqvalid, outcurr, reqaccepted);
+
+    integer floorIndex;
+    always @(posedge clock) begin
+        if (!reset) begin
+            pickupAssigned <= 8'b0;
+            for (floorIndex = 0; floorIndex < 8; floorIndex = floorIndex + 1)
+                waitingCount[floorIndex] <= 4'd0;
+        end else begin
+            // The elevator accepted the pickup floor.
+            if (outreqvalid && reqaccepted)
+                pickupAssigned[outcurr] <= 1'b1;
+
+            // The elevator arrived, so the whole group boards.
+            if (boardGroup) begin
+                waitingCount[pickupfloor] <= 4'd0;
+                pickupAssigned[pickupfloor] <= 1'b0;
+            end
+
+            // Store the destination in the next free passenger slot.
+            if (acceptPassenger) begin
+                waitingDest[newcurr][3 * waitingCount[newcurr] +: 3] <= dest;
+                waitingCount[newcurr] <= waitingCount[newcurr] + 4'd1;
+            end
+        end
+    end
 
 
 endmodule 
@@ -59,11 +115,11 @@ endmodule
     in contrary, pop will always be called whenever there is a request, and the entire floor queue will pop
     meaning it could delete multiple npc objects at the same time 
 */
-module floor_fifo (clock, reset, invalid, infloor, inready, outvalid, outfloor, outready);
-    input clock, reset, invalid;
+module fifo (clock, reset, invalid, infloor, inready, outvalid, outfloor, outready);
+    input clock, reset, invalid, outready;
     input [2:0] infloor; 
 
-    output inready, outvalid, outready;
+    output inready, outvalid;
     output [2:0] outfloor;
 
     // invalid/outvalid : acts like submit button, whatever is going on in this module doesn't matter
