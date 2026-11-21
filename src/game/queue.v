@@ -48,12 +48,12 @@ module floor_fifo (clock, reset, invalid, infloor, inready, outvalid, outfloor, 
     reg [3:0] count;             // 0 through 8
     wire push, pop;
 
-    assign outValid = (count != 4'd0);
-    assign outFloor = floorQueue[head];
-    assign pop = outValid && outReady;
+    assign outvalid = (count != 4'd0);
+    assign outfloor = floorQueue[head];
+    assign pop = outvalid && outready;
 
-    assign inReady = (count != 4'd8) || pop;
-    assign push = inValid && inReady;
+    assign inready = (count != 4'd8) || pop;
+    assign push = invalid && inready;
 
     always @(posedge clock) begin
         if (!reset) begin
@@ -62,7 +62,7 @@ module floor_fifo (clock, reset, invalid, infloor, inready, outvalid, outfloor, 
             count <= 4'd0;
         end else begin
             if (push) begin
-                floorQueue[tail] <= inFloor;
+                floorQueue[tail] <= infloor;
                 tail <= tail + 3'd1;
             end
 
