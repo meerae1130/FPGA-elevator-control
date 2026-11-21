@@ -1,4 +1,4 @@
-module elevatorAssignment(clock, reset, requestedFloor, requestValid, floorA, floorB, busyA, busyB, targetA, targetB, assignA, assignB, requestAccepted);
+module elevatorAssignment(clock, reset, personfloor, requestValid, floorA, floorB, busyA, busyB, targetA, targetB, assignA, assignB, requestAccepted);
 
 /*
     will decide which one to respond to request by comparing cost 
@@ -15,7 +15,7 @@ module elevatorAssignment(clock, reset, requestedFloor, requestValid, floorA, fl
 
 */
 input clock, reset, requestValid, busyA, busyB;
-input [2:0] requestedFloor, floorA, floorB;
+input [2:0] personfloor, floorA, floorB;
 
 output reg [2:0] targetA;   // destination floor of EA
 output reg [2:0] targetB;   // destination floor of EB
@@ -33,14 +33,14 @@ wire [2:0] costB;
 // calling elevatorcost.v instantiating 
 cost elevatorACost (
     .currentFloor(floorA),
-    .requestedFloor(requestedFloor),
+    .requestedFloor(personfloor),
     .cost(costA)
 );
 // for elevaot rA
 
 cost elevatorBCost (
     .currentFloor(floorB),
-    .requestedFloor(requestedFloor),
+    .requestedFloor(personfloor),
     .cost(costB)
 );
 // for elevator B
@@ -77,22 +77,22 @@ always @(posedge clock) begin
                 // case 1: both available 
 
                 if(costA <= costB) begin
-                    targetA <= requestedFloor;
+                    targetA <= personfloor;
                     assignA <= 1'b1;
                     requestAccepted <= 1'b1;
                 end else begin
-                    targetB <= requestedFloor;
+                    targetB <= personfloor;
                     assignB <= 1'b1;
                     requestAccepted <= 1'b1;
                 end
             end else if(!busyA && busyB) begin
                 // case2: A available 
-                targetA <= requestedFloor;
+                targetA <= personfloor;
                 assignA <= 1'b1;
                 requestAccepted <= 1'b1;
             end else if(busyA && !busyB) begin
                 // case3: B available 
-                targetB <= requestedFloor;
+                targetB <= personfloor;
                 assignB <= 1'b1;
                 requestAccepted <= 1'b1;
             end
