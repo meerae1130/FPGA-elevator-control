@@ -23,7 +23,7 @@ output reg [0:0] move, check, newgame, newquestion, pickmoney;
 //OUTPUT DEFINITIONS:
 // gamestate = tells other modules what phase of game we are currently in
 // targetfloor = floor requested by user
-// move = tells elevator to start going to targetfloor
+// move = indicates that the player is allowed to request elevator movement
 // check = tells math module to check if players ans is correct or not
 // newgame = tells other modules to start a new game (and tells to choose a new floor to put money)
 // newquestion = tells game when to give new math questoin
@@ -64,7 +64,7 @@ always @(*)begin
 
 
     moving: if(caught) nextstate = lose;
-    else if(arrived) begin
+    else if(arrived && playerfloor == targetfloor) begin
         if(playerfloor == moneyfloor)
         nextstate = win;
         else 
@@ -110,7 +110,7 @@ always @(*) begin
         newgame = 1;
     end
 
-    //add pickmoneyu
+    //add pickmoney
     pickmoney = 0;
     if(currentstate == pickfloor)
     pickmoney = 1;
