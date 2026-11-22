@@ -1,3 +1,11 @@
+/* vga display specs: 
+    640 x 480 resolution (this is 1:1)
+    9 bit color depth == can make 512 colors in total
+                         3 bits for each RGB 
+
+
+*/
+
 module vga_display (
     input clock, reset,
     input [2:0] gamestate, playerfloor, guardfloor, moneyfloor, targetfloor,
