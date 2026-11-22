@@ -34,7 +34,10 @@
         -> none, only the first person in queue will get on
 */
 
-module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor, newreqvalid, outcurr, outreqvalid, boardingCount, boardingDest, newreqready);
+module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor, newreqvalid, outcurr, outreqvalid, boardingCount, boardingDest, newreqready, pickupBusy);
+    parameter [25:0] PICKUP_CYCLES = 26'd50_000_000; // One second at 50 MHz.
+    // one second per floor (when boarding) number of persons does not matter
+    // just one second per boarding event 
     input clock, reset, newreqvalid, reqaccepted, pickupvalid;
     input [2:0] newcurr, dest, pickupfloor;
 
@@ -42,31 +45,44 @@ module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor
     output[2:0] outcurr; 
     output reg [3:0] boardingCount;
     output [23:0] boardingDest;
+    output reg pickupBusy;
     
     wire enqueue, inready; 
 
     reg [3:0] waitingCount [0:7];
     reg [23:0] waitingDest [0:7];
     reg [7:0] pickupAssigned;
+    reg [2:0] boardingFloor;
+    reg [25:0] pickupCounter;
 
-    wire needsPickup, canStore, acceptPassenger, boardGroup;
+    wire needsPickup, acceptPassenger, boardGroup;
+    wire assigningPickup, startPickup, boardingNewRequestFloor;
+    wire [3:0] nextPassengerSlot;
 
-    assign needsPickup = (waitingCount[newcurr] == 4'd0);
-    assign boardGroup = pickupvalid && pickupAssigned[pickupfloor];
+    assign assigningPickup = outreqvalid && reqaccepted;
+    // An elevator already at the pickup floor can accept and start pickup together.
+    assign startPickup = !pickupBusy && pickupvalid &&
+                         (pickupAssigned[pickupfloor] ||
+                          (assigningPickup && outcurr == pickupfloor));
+    assign boardGroup = pickupBusy && (pickupCounter == PICKUP_CYCLES - 26'd1);
 
-    // Board the existing group first if a new request is for the same floor.
-    assign canStore = (waitingCount[newcurr] < 4'd8) &&
-                      !(boardGroup && (newcurr == pickupfloor));
+    // A new passenger arriving as a group boards starts the next pickup.
+    assign boardingNewRequestFloor = boardGroup && (newcurr == boardingFloor);
+    assign nextPassengerSlot = boardingNewRequestFloor ? 4'd0
+                                                        : waitingCount[newcurr];
+    assign needsPickup = (nextPassengerSlot == 4'd0);
 
-    assign enqueue = newreqvalid && canStore && needsPickup;
-    assign newreqready = canStore && (!needsPickup || inready);
+    assign newreqready = (nextPassengerSlot < 4'd8) && (!needsPickup || inready);
     assign acceptPassenger = newreqvalid && newreqready;
+    assign enqueue = acceptPassenger && needsPickup;
 
-    assign boardingDest = waitingDest[pickupfloor];
+    // Latch on the clock edge with nonzero boardingCount, as pickupBusy clears.
+    // Only the first boardingCount destination slots are valid.
+    assign boardingDest = boardGroup ? waitingDest[boardingFloor] : 24'd0;
 
     always @(*) begin
         if (boardGroup)
-            boardingCount = waitingCount[pickupfloor];
+            boardingCount = waitingCount[boardingFloor];
         else
             boardingCount = 4'd0;
     end
@@ -77,24 +93,37 @@ module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor
     integer floorIndex;
     always @(posedge clock) begin
         if (!reset) begin
+            pickupBusy <= 1'b0;
+            boardingFloor <= 3'd0;
+            pickupCounter <= 26'd0;
             pickupAssigned <= 8'b0;
             for (floorIndex = 0; floorIndex < 8; floorIndex = floorIndex + 1)
                 waitingCount[floorIndex] <= 4'd0;
         end else begin
+            if (startPickup) begin
+                pickupBusy <= 1'b1;
+                boardingFloor <= pickupfloor;
+                pickupCounter <= 26'd0;
+            end else if (boardGroup) begin
+                pickupBusy <= 1'b0;
+            end else if (pickupBusy) begin
+                pickupCounter <= pickupCounter + 26'd1;
+            end
+
             // The elevator accepted the pickup floor.
-            if (outreqvalid && reqaccepted)
+            if (assigningPickup)
                 pickupAssigned[outcurr] <= 1'b1;
 
-            // The elevator arrived, so the whole group boards.
+            // The pickup delay finished, so the whole group boards.
             if (boardGroup) begin
-                waitingCount[pickupfloor] <= 4'd0;
-                pickupAssigned[pickupfloor] <= 1'b0;
+                waitingCount[boardingFloor] <= 4'd0;
+                pickupAssigned[boardingFloor] <= 1'b0;
             end
 
             // Store the destination in the next free passenger slot.
             if (acceptPassenger) begin
-                waitingDest[newcurr][3 * waitingCount[newcurr] +: 3] <= dest;
-                waitingCount[newcurr] <= waitingCount[newcurr] + 4'd1;
+                waitingDest[newcurr][3 * nextPassengerSlot +: 3] <= dest;
+                waitingCount[newcurr] <= nextPassengerSlot + 4'd1;
             end
         end
     end
