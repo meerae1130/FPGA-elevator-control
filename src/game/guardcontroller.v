@@ -1,30 +1,30 @@
 
-module guardcontroller(clk, reset, guardstart, playerfloor, guardfloor, guarddirection, guardstopped, guardtarget);
+module guardcontroller(clk, reset, guardstart, playerfloor, guardfloor, guarddirection, guardstopped);
 
 // purpose : implement security guard, manages floor, movement and stopping at each floor
 
 //INPUTS
 // clk = for automated speed
-// reset = active low resets guard to 0
+// reset = active low resets guard to 7
 // guardstart = guard will start moving when user begins game (so this indicates game start)
 // playerfloor = tracks player's current floor because guard will slowly chase them
-// guardfloor = store guards current floor
-// guardtarget = tells request module about which floor the guard wants to go to
+// guardtarget = tells request module about which floor the guard wants to go to (not needed if just follows player)
 
 //OUTPUTS
 // guarddirection = idle, up , down 
-// guardstopped = is 1 when guard idle -> will tell collision module that player loses if both guard and player are stopped
-
+// guardstopped = always 1 since guard moves instatly floor to floor
+// guardfloor = store guards current floor
 //note: guard should start at top floor, to give player fair chance
 
 input[0:0] clk, reset, guardstart;
-input [2:0] playerfloor, guardfloor;
+input [2:0] playerfloor;
 
 output[0:0] guardstopped;
 output reg [1:0] guarddirection;
-output [2:0] guardtarget;
+//output [2:0] guardtarget;
+output reg[2:0] guardfloor;
 
-assign guardtarget = guardstart ? playerfloor : guardfloor;
+//assign guardtarget = guardstart ? playerfloor : guardfloor;
 // if 1, targets playerfloor
 // if 0 targets guardfloor (stay at its location)
 // DIRECTION LOGIC FSM
@@ -68,10 +68,43 @@ always @(posedge clk) begin
     end
 end
 
+//GUARD floor
+always @(posedge clk)begin
+    if(!reset) begin
+        guardfloor <= 3'd7; // initialize to floor 7
+
+    end else if(counter == 28'd149999999 && guardstart == 1) begin
+        
+        if(guardfloor > playerfloor)begin
+            guardfloor <= guardfloor - 1; 
+        end else if (guardfloor < playerfloor) begin
+            guardfloor <= guardfloor +1;
+        end 
+    end
+end
+
+//timer logic
+
+reg [27:0] counter;
+// 3 seconds speed for guard
+always @(posedge clk) begin
+    if (!reset) begin
+        counter <= 28'd0;
+    end
+    else if (!guardstart) begin
+        counter <= 28'd0;
+    end
+    else if (counter == 28'd149999999) begin
+        counter <= 28'd0;
+    end
+    else begin
+        counter <= counter + 28'd1;
+    end
+end
 
 
 //OUTPUT LOGIC
-assign guardstopped = (currentstate == idle);
+assign guardstopped = 1; // so guardstopped is 1 when guard is stopped on a floor
 
 
 endmodule
