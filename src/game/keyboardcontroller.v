@@ -40,14 +40,14 @@ output reg signed [7:0] finalanswer; // signed for pos or neg
 
 //RESET AND GETTING CODE LOGIC
 reg[7:0] getcode; //stores code received from ps2 board
-reg[0:0] release; // track if release or not
+reg[0:0] keyReleased; // track if release or not
 
 
 always @(posedge clk) begin
     if(!reset) begin
 
     getcode <= 8'b00000000;
-    release <= 0;
+    keyReleased <= 0;
        
     end else begin
         if(receiveddataen == 1) begin
@@ -59,11 +59,11 @@ always @(posedge clk) begin
             // ie: 5 sends code 2E, user releases 5, sends code F0 and 2E, needs to recognize 2E isnt another 5 input
             // (F0 is the release signal for any key)
 
-            if(receiveddata == 8'hF0 && release == 0) begin
-                release <= 1; // raise flag
-            end else if(receiveddata != 8'hF0 && release == 1)begin //if flag was already raised reset to 0
-                release <= 0;
-            end else  if(receiveddata != 8'hF0 && release == 0) begin // if not after a release , store
+            if(receiveddata == 8'hF0 && keyReleased == 0) begin
+                keyReleased <= 1; // raise flag
+            end else if(receiveddata != 8'hF0 && keyReleased == 1)begin //if flag was already raised reset to 0
+                keyReleased <= 0;
+            end else  if(receiveddata != 8'hF0 && keyReleased == 0) begin // if not after a release , store
                  getcode <= receiveddata;
             end
 
@@ -86,7 +86,7 @@ always @(posedge clk) begin
 
 valid <= 0; // default
 
-        if(receiveddataen == 1 && release == 0) begin
+        if(receiveddataen == 1 && keyReleased == 0) begin
             
                case(receiveddata)
     
@@ -129,7 +129,7 @@ always @(posedge clk) begin
     
     if(valid == 1 && gamestate == 3'b010) begin
         answer <= answer*10 + digit;
-    end else if(receiveddata == 8'h5A && receiveddataen == 1 && release == 0 && gamestate == 3'b010) begin
+    end else if(receiveddata == 8'h5A && receiveddataen == 1 && keyReleased == 0 && gamestate == 3'b010) begin
             answer<=8'b00000000;
         end
     
@@ -144,9 +144,9 @@ reg[0:0] sign; // keep track of sign of ans
 always @(posedge clk)begin
     if(!reset) begin
         sign <= 0;
-    end else if(receiveddata ==  8'h4E && receiveddataen == 1 && release ==0 && gamestate == 3'b010)begin
+    end else if(receiveddata ==  8'h4E && receiveddataen == 1 && keyReleased ==0 && gamestate == 3'b010)begin
         sign <=1; 
-    end else if(receiveddata == 8'h5A && receiveddataen == 1 && release == 0 && gamestate == 3'b010) begin
+    end else if(receiveddata == 8'h5A && receiveddataen == 1 && keyReleased == 0 && gamestate == 3'b010) begin
         sign <= 0; // reset to 0 when enter pressed so next ans wont be neg
     end
 end
@@ -158,7 +158,7 @@ always @(posedge clk)begin
     submit<= 0;
     if(!reset) begin
         submit <= 0;
-    end else if(receiveddata == 8'h5A && receiveddataen == 1 && release == 0 &&gamestate == 3'b010)begin
+    end else if(receiveddata == 8'h5A && receiveddataen == 1 && keyReleased == 0 &&gamestate == 3'b010)begin
         submit<=1;
     end
 end
@@ -169,7 +169,7 @@ always @(posedge clk)begin
     if(!reset)begin
         finalanswer <=0; 
 
-    end else if(receiveddata == 8'h5A && receiveddataen == 1 && release == 0 && gamestate == 3'b010) begin
+    end else if(receiveddata == 8'h5A && receiveddataen == 1 && keyReleased == 0 && gamestate == 3'b010) begin
     if(sign == 1) begin
         finalanswer<= answer*-1;
     end else begin
@@ -191,7 +191,7 @@ always@ (posedge clk)begin
 
          floorvalid <= 0; //reset to 0 every clock cycle so it doesnt keep signaling a new selection
         
-        if(gamestate == 3'b001 && receiveddataen == 1 && release == 0) 
+        if(gamestate == 3'b001 && receiveddataen == 1 && keyReleased == 0)
           
           case(receiveddata)
    
@@ -226,7 +226,7 @@ always @(posedge clk)begin
         started <= 0;
     end else begin
     started <=0;
-    if(receiveddata == 8'h29 && receiveddataen == 1 && release == 0 && gamestate == 3'b000) 
+    if(receiveddata == 8'h29 && receiveddataen == 1 && keyReleased == 0 && gamestate == 3'b000)
         started <=1;
     end
 end

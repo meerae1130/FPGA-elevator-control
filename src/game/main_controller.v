@@ -1,4 +1,6 @@
-module main_controller(CLOCK_50, KEY, PS2_CLK, PS2_DAT);
+module main_controller(CLOCK_50, KEY, PS2_CLK, PS2_DAT,
+                       VGA_R, VGA_G, VGA_B, VGA_CLK, VGA_HS, VGA_VS,
+                       VGA_BLANK_N, VGA_SYNC_N);
 
 //purpose: to connect all modules together
 
@@ -9,20 +11,23 @@ module main_controller(CLOCK_50, KEY, PS2_CLK, PS2_DAT);
 // PS2_CLK = keyboard clock
 // PS2_DAT = keyboard data
 
-input [0:0] CLOCK_50, PS2_CLK, PS2_DAT;
+input CLOCK_50;
+inout PS2_CLK, PS2_DAT;
 input [3:0] KEY;
+output [2:0] VGA_R, VGA_G, VGA_B;
+output VGA_CLK, VGA_HS, VGA_VS, VGA_BLANK_N, VGA_SYNC_N;
 
 // KEYBOARD CONNECTION WIRES
 
 wire [7:0] receiveddata;
-wire [0:0] receiveddataen, started, floorvalid, submit, coorrect, wrong, arrived, caught, move,check, newgame, newquestion, pickmoney, failed;
+wire [0:0] receiveddataen, started, floorvalid, submit, correct, wrong, arrived, caught, move,check, newgame, newquestion, pickmoney, failed;
 wire [2:0] gamestate, floorinput, playerfloor, guardfloor, moneyfloor, targetfloor;
 wire[1:0] failcount, operator;
 wire [3:0] A, B;
 wire signed [7:0] finalanswer;
 
 // INSTATIATION OF PS2 CONTROLLER MODULE
-PS2_Controller ps2(.CLOCK_50(CLOCK_50), .reset(KEY[0]), .PS2_CLK(PS2_CLK), .PS2_DAT(PS2_DAT), .received_data(receiveddata), .received_data_en(receiveddataen), .the_command(8'b00000000), .send_command(1'b0));
+PS2_Controller ps2(.CLOCK_50(CLOCK_50), .reset(~KEY[0]), .PS2_CLK(PS2_CLK), .PS2_DAT(PS2_DAT), .received_data(receiveddata), .received_data_en(receiveddataen), .the_command(8'b00000000), .send_command(1'b0));
 // not using thecommand and sendcommand so just set to const numbers
 
 //CONNECT PS2 TO KEYBOARDCONTROLLER MODULE
@@ -45,8 +50,36 @@ wire [0:0] arrival1, arrival2, playerstopped1, playerstopped2, busy1, busy2, mov
     elevatorcontroller e2(.clk(CLOCK_50), .reset(KEY[0]),.move(move2), .targetfloor(targetfloor2), .currentfloor(currentfloor2), .elevatordirection(direction2), .arrival(arrival2), .playerstopped(playerstopped2), .busy(busy2));
 
 // CONNECT ELEVATORASSIGNMENT MODULE
-wire[0:0] requestedfloor, requestvalid, requestAccepted;
-elevatorAssignment(.clock(CLOCK_50), .reset(KEY[0]), .requestedFloor(requestedfloor), .requestValid(requestvalid), .floorA(currentfloor1), .floorB(currentfloor2), .busyA(busy1), .busyB(busy2), .targetA(targetfloor1), .targetB(targetfloor2), .assignA(move1), .assignB(move2), .requestAccepted(requestaccepted));
+wire [2:0] requestedfloor;
+wire requestvalid, requestAccepted;
+elevatorAssignment assignment1(.clock(CLOCK_50), .reset(KEY[0]), .personfloor(requestedfloor), .requestValid(requestvalid), .floorA(currentfloor1), .floorB(currentfloor2), .busyA(busy1), .busyB(busy2), .targetA(targetfloor1), .targetB(targetfloor2), .assignA(move1), .assignB(move2), .requestAccepted(requestAccepted));
+
+wire roundActive = gamestate == 3'd1 || gamestate == 3'd2 || gamestate == 3'd3;
+wire guardstopped;
+guardcontroller guard (
+    .clk(CLOCK_50), .reset(KEY[0]), .guardstart(roundActive),
+    .playerfloor(playerfloor), .guardfloor(guardfloor), .guardstopped(guardstopped)
+);
+
+wire [5:0] moneyRandomBits;
+reg [2:0] savedMoneyFloor;
+random moneyRandom (.clock(CLOCK_50), .reset(KEY[0]), .lfsr_bits(moneyRandomBits));
+always @(posedge CLOCK_50) begin
+    if (!KEY[0])
+        savedMoneyFloor <= 3'd0;
+    else if (pickmoney)
+        savedMoneyFloor <= moneyRandomBits[2:0];
+end
+assign moneyfloor = savedMoneyFloor;
+
+vga_display display (
+    .clock(CLOCK_50), .reset(KEY[0]), .gamestate(gamestate),
+    .playerfloor(playerfloor), .guardfloor(guardfloor), .moneyfloor(moneyfloor),
+    .targetfloor(targetfloor), .currentfloor1(currentfloor1), .currentfloor2(currentfloor2),
+    .busy1(busy1), .busy2(busy2), .A(A), .B(B), .operator(operator),
+    .VGA_R(VGA_R), .VGA_G(VGA_G), .VGA_B(VGA_B), .VGA_CLK(VGA_CLK),
+    .VGA_HS(VGA_HS), .VGA_VS(VGA_VS), .VGA_BLANK_N(VGA_BLANK_N), .VGA_SYNC_N(VGA_SYNC_N)
+);
 
 //add rest tmrw
 
