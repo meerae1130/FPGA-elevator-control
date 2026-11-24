@@ -12,6 +12,7 @@ module vga_display (
     input [2:0] currentfloor1, currentfloor2,
     input busy1, busy2, riding1, riding2,
     input [3:0] npcRiders1, npcRiders2,
+    input [31:0] waitingCounts,
     input [3:0] A, B,
     input [1:0] operator,
     output [2:0] VGA_R, VGA_G, VGA_B,
@@ -36,6 +37,7 @@ module vga_display (
     reg [2:0] state, player, guard, money, target, elevator1, elevator2;
     reg moving1, moving2, playerInA, playerInB;
     reg [3:0] ridersA, ridersB;
+    reg [31:0] floorWaitingCounts;
     reg [3:0] operandA, operandB;
     reg [1:0] operation;
     always @(posedge clock) begin
@@ -53,6 +55,7 @@ module vga_display (
             playerInB <= reset && riding2;
             ridersA <= !reset ? 4'd0 : npcRiders1;
             ridersB <= !reset ? 4'd0 : npcRiders2;
+            floorWaitingCounts <= !reset ? 32'd0 : waitingCounts;
             operandA <= !reset ? 4'd0 : A;
             operandB <= !reset ? 4'd0 : B;
             operation <= !reset ? 2'd0 : operator;
@@ -113,6 +116,13 @@ module vga_display (
                   ((dotX == 3'd4 && dotY >= 3'd3 && dotY <= 3'd5) ||
                    (dotY == 3'd4 && dotX >= 3'd3 && dotX <= 3'd5));
 
+    // The hall between cars has eight waiting spots on each floor.
+    wire [3:0] floorWaiting = floorWaitingCounts[4 * floorNumber +: 4];
+    wire waitingDot = x >= 10'd256 && x < 10'd384 &&
+                      {1'b0, x[6:4]} < floorWaiting &&
+                      ((x[3:0] == 4'd8 && rowY >= 6'd19 && rowY <= 6'd21) ||
+                       (rowY == 6'd20 && x[3:0] >= 4'd7 && x[3:0] <= 4'd9));
+
     reg [127:0] textLine;
     reg [3:0] textIndex;
     reg [9:0] textX, textY;
@@ -141,6 +151,8 @@ module vga_display (
                     textY = carY - 6'd16;
                     ink = PLAYER;
                 end
+            end else if (waitingDot) begin
+                color = NPC;
             end else if (rowY >= 6'd12 && rowY < 6'd28) begin
                 textY = rowY - 6'd12;
                 textX = {6'd0, x[3:0]};
@@ -174,15 +186,6 @@ module vga_display (
                             8'h30 + {4'd0, operandB}, " = ?       "};
             else if (state == MOVING)
                 textLine[127:120] = 8'h30 + {5'd0, target};
-        end else if (y >= 10'd88 && y < 10'd104) begin
-            textY = y - 10'd88;
-            if (x >= 10'd168 && x < 10'd328) begin
-                textLine = "ELEVATOR A      ";
-                textX = x - 10'd168;
-            end else if (x >= 10'd328 && x < 10'd488) begin
-                textLine = "ELEVATOR B      ";
-                textX = x - 10'd328;
-            end
         end
         textIndex = textX[7:4];
     end

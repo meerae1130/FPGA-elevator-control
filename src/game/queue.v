@@ -34,7 +34,7 @@
         -> none, only the first person in queue will get on
 */
 
-module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor, newreqvalid, outcurr, outreqvalid, boardingCount, boardingDest, newreqready, pickupBusy);
+module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor, newreqvalid, outcurr, outreqvalid, boardingCount, boardingDest, newreqready, pickupBusy, waitingCounts);
     parameter [25:0] PICKUP_CYCLES = 26'd50_000_000; // One second at 50 MHz.
     // one second per floor (when boarding) number of persons does not matter
     // just one second per boarding event 
@@ -46,10 +46,17 @@ module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor
     output [3:0] boardingCount;
     output [23:0] boardingDest;
     output reg pickupBusy;
+    output [31:0] waitingCounts; // Four bits per floor, floor 0 in bits 3:0.
     
     wire enqueue, inready; 
 
     reg [3:0] waitingCount [0:7];
+    genvar displayFloor;
+    generate
+        for (displayFloor = 0; displayFloor < 8; displayFloor = displayFloor + 1) begin : floorCounts
+            assign waitingCounts[4 * displayFloor +: 4] = waitingCount[displayFloor];
+        end
+    endgenerate
     reg [23:0] waitingDest [0:7];
     reg [7:0] pickupAssigned;
     reg [2:0] boardingFloor;

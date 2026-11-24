@@ -86,6 +86,7 @@ wire startPickup1 = waiting1 && !pickupBusy;
 wire startPickup2 = waiting2 && !waiting1 && !pickupBusy;
 reg pickupCar2;
 wire [3:0] boardingCount;
+wire [31:0] waitingCounts;
 wire [23:0] boardingDest;
 wire pickupDone = boardingCount != 4'd0;
 
@@ -108,7 +109,8 @@ queue npcQueue (
     .outcurr(npcPickupFloor), .outreqvalid(npcRequest),
     .pickupvalid(startPickup1 || startPickup2),
     .pickupfloor(startPickup1 ? currentfloor1 : currentfloor2),
-    .boardingCount(boardingCount), .boardingDest(boardingDest), .pickupBusy(pickupBusy)
+    .boardingCount(boardingCount), .boardingDest(boardingDest), .pickupBusy(pickupBusy),
+    .waitingCounts(waitingCounts)
 );
 
 elevator_trip trip1 (
@@ -178,6 +180,7 @@ vga_display display (
     .targetfloor(targetfloor), .currentfloor1(currentfloor1), .currentfloor2(currentfloor2),
     .busy1(reserved1), .busy2(reserved2), .A(A), .B(B), .operator(operator),
     .riding1(riding1), .riding2(riding2), .npcRiders1(npcRiders1), .npcRiders2(npcRiders2),
+    .waitingCounts(waitingCounts),
     .VGA_R(red9), .VGA_G(green9), .VGA_B(blue9), .VGA_CLK(VGA_CLK),
     .VGA_HS(VGA_HS), .VGA_VS(VGA_VS), .VGA_BLANK_N(VGA_BLANK_N), .VGA_SYNC_N(VGA_SYNC_N)
 );

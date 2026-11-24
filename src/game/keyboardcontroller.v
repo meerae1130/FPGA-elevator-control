@@ -86,7 +86,7 @@ always @(posedge clk) begin
 
 valid <= 0; // default
 
-        if(receiveddataen == 1 && keyReleased == 0) begin
+        if(receiveddataen && !keyReleased && gamestate == 3'd2) begin
             
                case(receiveddata)
     
@@ -117,72 +117,38 @@ valid <= 0; // default
     end
 end
 
-reg signed [7:0] answer; // store final  ans to give back to math module
+// An explicit digit is required, even when the answer is zero.
+reg signed [7:0] answer;
+reg hasDigit, sign;
+wire mathKey = receiveddataen && !keyReleased;
+wire enterKey = mathKey && receiveddata == 8'h5A;
+wire signed [7:0] appendedAnswer = (answer > 8'sd9) ? 8'sd127
+                                                    : answer * 8'sd10 + $signed({4'd0, digit});
+wire signed [7:0] submittedAnswer = valid ? appendedAnswer : answer;
 
-// MULTIDIGIT ANSWER LOGIC
-// if more than 1 digit entered -> multiple first digit by 10, add second digit
-
-// if enter is pressed -> user has inputted their full answer to question, so reset answer back to 0 for next question
 always @(posedge clk) begin
-    
-    if(!reset)begin
-        answer <= 8'b00000000;
-    end else begin
-    
-    if(valid == 1 && gamestate == 3'b010) begin
-        // Keep an out-of-range value distinct from every valid math result.
-        if (answer > 8'sd9)
-            answer <= 8'sd127;
-        else
-            answer <= answer * 8'd10 + digit;
-    end else if(receiveddata == 8'h5A && receiveddataen == 1 && keyReleased == 0 && gamestate == 3'b010) begin
-            answer<=8'b00000000;
+    submit <= 1'b0;
+    if (!reset || gamestate != 3'd2) begin
+        answer <= 8'sd0;
+        hasDigit <= 1'b0;
+        sign <= 1'b0;
+        finalanswer <= 8'sd0;
+    end else if (enterKey) begin
+        if (hasDigit || valid) begin
+            finalanswer <= sign ? -submittedAnswer : submittedAnswer;
+            submit <= 1'b1;
         end
-    
-    end
-    end
-
-// NEGATIVE ANS LOGIC
-
-reg[0:0] sign; // keep track of sign of ans
-// 8'h4E is codefor - symbol
-// sign = 1 means neg ans
-always @(posedge clk)begin
-    if(!reset) begin
-        sign <= 0;
-    end else if(receiveddata ==  8'h4E && receiveddataen == 1 && keyReleased ==0 && gamestate == 3'b010)begin
-        sign <=1; 
-    end else if(receiveddata == 8'h5A && receiveddataen == 1 && keyReleased == 0 && gamestate == 3'b010) begin
-        sign <= 0; // reset to 0 when enter pressed so next ans wont be neg
-    end
-end
-
-// apply it to ans
-// 8'h5A is code for enter 
-
-always @(posedge clk)begin
-    submit<= 0;
-    if(!reset) begin
-        submit <= 0;
-    end else if(receiveddata == 8'h5A && receiveddataen == 1 && keyReleased == 0 &&gamestate == 3'b010)begin
-        submit<=1;
-    end
-end
-
-always @(posedge clk)begin
-
-    if(!reset)begin
-        finalanswer <=0; 
-
-    end else if(receiveddata == 8'h5A && receiveddataen == 1 && keyReleased == 0 && gamestate == 3'b010) begin
-    if(sign == 1) begin
-        finalanswer<= answer*-1;
+        answer <= 8'sd0;
+        hasDigit <= 1'b0;
+        sign <= 1'b0;
     end else begin
-        finalanswer<=answer;
+        if (valid) begin
+            answer <= appendedAnswer;
+            hasDigit <= 1'b1;
+        end
+        if (mathKey && receiveddata == 8'h4E)
+            sign <= 1'b1;
     end
-    
-    end
-    
 end
 
 // FLOOR SELECTION LOGIC
