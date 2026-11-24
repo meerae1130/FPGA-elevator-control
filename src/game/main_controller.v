@@ -44,6 +44,8 @@ wire [2:0] currentfloor1, currentfloor2, targetfloor1, targetfloor2;
 wire [2:0] assignedFloor1, assignedFloor2;
 wire busy1, busy2, reserved1, reserved2, move1, move2, assign1, assign2;
 wire playerboard1, playerboard2, playerstopped, guardstopped;
+wire riding1, riding2;
+wire [3:0] npcRiders1, npcRiders2;
 wire requestAccepted;
 wire roundActive = gamestate == 3'd1 || gamestate == 3'd2 || gamestate == 3'd3;
 
@@ -116,7 +118,7 @@ elevator_trip trip1 (
     .npcPickupWaiting(waiting1), .npcPickupStart(startPickup1),
     .npcPickupDone(pickupDone && !pickupCar2), .boardingCount(boardingCount),
     .boardingDest(boardingDest), .playerBoard(playerboard1),
-    .carMove(move1), .carTarget(targetfloor1)
+    .carMove(move1), .carTarget(targetfloor1), .npcRiders(npcRiders1)
 );
 elevator_trip trip2 (
     .clock(CLOCK_50), .reset(KEY[0]), .assigned(assign2), .assignedPlayer(assignedPlayer),
@@ -125,7 +127,7 @@ elevator_trip trip2 (
     .npcPickupWaiting(waiting2), .npcPickupStart(startPickup2),
     .npcPickupDone(pickupDone && pickupCar2), .boardingCount(boardingCount),
     .boardingDest(boardingDest), .playerBoard(playerboard2),
-    .carMove(move2), .carTarget(targetfloor2)
+    .carMove(move2), .carTarget(targetfloor2), .npcRiders(npcRiders2)
 );
 
 elevatorcontroller e1 (
@@ -141,7 +143,8 @@ playercontroller player (
     .clk(CLOCK_50), .reset(KEY[0]), .playerboard1(playerboard1),
     .playerboard2(playerboard2), .currentfloor1(currentfloor1),
     .currentfloor2(currentfloor2), .targetfloor(targetfloor),
-    .playerfloor(playerfloor), .playerstopped(playerstopped), .arrived(arrived)
+    .playerfloor(playerfloor), .playerstopped(playerstopped), .arrived(arrived),
+    .riding1(riding1), .riding2(riding2)
 );
 guardcontroller guard (
     .clk(CLOCK_50), .reset(KEY[0]), .guardstart(roundActive),
@@ -174,6 +177,7 @@ vga_display display (
     .playerfloor(playerfloor), .guardfloor(guardfloor), .moneyfloor(moneyfloor),
     .targetfloor(targetfloor), .currentfloor1(currentfloor1), .currentfloor2(currentfloor2),
     .busy1(reserved1), .busy2(reserved2), .A(A), .B(B), .operator(operator),
+    .riding1(riding1), .riding2(riding2), .npcRiders1(npcRiders1), .npcRiders2(npcRiders2),
     .VGA_R(red9), .VGA_G(green9), .VGA_B(blue9), .VGA_CLK(VGA_CLK),
     .VGA_HS(VGA_HS), .VGA_VS(VGA_VS), .VGA_BLANK_N(VGA_BLANK_N), .VGA_SYNC_N(VGA_SYNC_N)
 );

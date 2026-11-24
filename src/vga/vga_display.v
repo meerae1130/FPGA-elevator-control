@@ -10,7 +10,8 @@ module vga_display (
     input clock, reset,
     input [2:0] gamestate, playerfloor, guardfloor, moneyfloor, targetfloor,
     input [2:0] currentfloor1, currentfloor2,
-    input busy1, busy2,
+    input busy1, busy2, riding1, riding2,
+    input [3:0] npcRiders1, npcRiders2,
     input [3:0] A, B,
     input [1:0] operator,
     output [2:0] VGA_R, VGA_G, VGA_B,
@@ -22,7 +23,7 @@ module vga_display (
     localparam [8:0] BACKGROUND = 9'b000_000_001, PANEL = 9'b001_001_010,
                      TEXT = 9'b111_111_111, PLAYER = 9'b001_110_101,
                      GUARD = 9'b111_011_100, MONEY = 9'b111_110_011,
-                     ELEVATOR = 9'b011_101_111;
+                     ELEVATOR = 9'b011_101_111, NPC = 9'b111_000_000;
 
     wire [9:0] x, y;
     vga_timing timing (
@@ -33,7 +34,8 @@ module vga_display (
 
     // Snapshot game signals once per frame; all use the same 50 MHz clock.
     reg [2:0] state, player, guard, money, target, elevator1, elevator2;
-    reg moving1, moving2;
+    reg moving1, moving2, playerInA, playerInB;
+    reg [3:0] ridersA, ridersB;
     reg [3:0] operandA, operandB;
     reg [1:0] operation;
     always @(posedge clock) begin
@@ -47,6 +49,10 @@ module vga_display (
             elevator2 <= !reset ? 3'd0 : currentfloor2;
             moving1 <= reset && busy1;
             moving2 <= reset && busy2;
+            playerInA <= reset && riding1;
+            playerInB <= reset && riding2;
+            ridersA <= !reset ? 4'd0 : npcRiders1;
+            ridersB <= !reset ? 4'd0 : npcRiders2;
             operandA <= !reset ? 4'd0 : A;
             operandB <= !reset ? 4'd0 : B;
             operation <= !reset ? 2'd0 : operator;
@@ -88,6 +94,25 @@ module vga_display (
         else begin floorNumber = 3'd0; rowY = buildingY - 10'd280; end
     end
 
+    // Each car is a 32 x 32 square. The dots occupy two rows of four.
+    wire inShaftA = x >= 10'd224 && x < 10'd256;
+    wire inShaftB = x >= 10'd384 && x < 10'd416;
+    wire carHere = (inShaftA && floorNumber == elevator1) ||
+                   (inShaftB && floorNumber == elevator2);
+    wire [4:0] carX = x[4:0];
+    wire [5:0] carY = rowY - 6'd4;
+    wire carBorder = carX == 5'd0 || carX == 5'd31 ||
+                     carY == 6'd0 || carY == 6'd31;
+    wire carReserved = inShaftA ? moving1 : moving2;
+    wire playerInCar = inShaftA ? playerInA : playerInB;
+    wire [3:0] riderCount = inShaftA ? ridersA : ridersB;
+    wire [3:0] dotIndex = {1'b0, carY[3], carX[4:3]};
+    wire [2:0] dotX = carX[2:0];
+    wire [2:0] dotY = carY[2:0];
+    wire npcDot = carY < 6'd16 && dotIndex < riderCount &&
+                  ((dotX == 3'd4 && dotY >= 3'd3 && dotY <= 3'd5) ||
+                   (dotY == 3'd4 && dotX >= 3'd3 && dotX <= 3'd5));
+
     reg [127:0] textLine;
     reg [3:0] textIndex;
     reg [9:0] textX, textY;
@@ -106,23 +131,30 @@ module vga_display (
         ink = TEXT;
         if (x >= 10'd32 && x < 10'd608 && y >= 10'd112 && y < 10'd432) begin
             color = rowY < 6'd2 ? BACKGROUND : PANEL;
-            if (rowY >= 6'd12 && rowY < 6'd28) begin
+            if (carHere && rowY >= 6'd4 && rowY < 6'd36) begin
+                color = carBorder ? (carReserved ? ELEVATOR : TEXT) : BACKGROUND;
+                if (npcDot)
+                    color = NPC;
+                if (playerInCar && carX >= 5'd11 && carX < 5'd27 && carY >= 6'd16) begin
+                    textLine[127:120] = "P";
+                    textX = carX - 5'd11;
+                    textY = carY - 6'd16;
+                    ink = PLAYER;
+                end
+            end else if (rowY >= 6'd12 && rowY < 6'd28) begin
                 textY = rowY - 6'd12;
+                textX = {6'd0, x[3:0]};
                 if (x >= 10'd64 && x < 10'd80)
                     textLine[127:120] = 8'h30 + {5'd0, floorNumber};
-                else if (x >= 10'd160 && x < 10'd176 && floorNumber == player) begin
+                else if (x >= 10'd96 && x < 10'd112 && floorNumber == player &&
+                         !playerInA && !playerInB) begin
                     textLine[127:120] = "P"; ink = PLAYER;
-                end else if (x >= 10'd256 && x < 10'd272 && floorNumber == guard) begin
+                end else if (x >= 10'd128 && x < 10'd144 && floorNumber == guard) begin
                     textLine[127:120] = "G"; ink = GUARD;
-                end else if (x >= 10'd352 && x < 10'd368 && floorNumber == elevator1) begin
-                    textLine[127:120] = "1"; ink = moving1 ? ELEVATOR : TEXT;
-                end else if (x >= 10'd448 && x < 10'd464 && floorNumber == elevator2) begin
-                    textLine[127:120] = "2"; ink = moving2 ? ELEVATOR : TEXT;
                 end else if (x >= 10'd544 && x < 10'd560 && floorNumber == money &&
                              state != START && state != 3'd6) begin
                     textLine[127:120] = "$"; ink = MONEY;
                 end
-                textX = {6'd0, x[3:0]};
             end
         end else if (y >= 10'd24 && y < 10'd40 && x >= 10'd32 && x < 10'd288) begin
             textLine = "ELEVATOR GAME   ";
@@ -142,18 +174,15 @@ module vga_display (
                             8'h30 + {4'd0, operandB}, " = ?       "};
             else if (state == MOVING)
                 textLine[127:120] = 8'h30 + {5'd0, target};
-        end else if (y >= 10'd88 && y < 10'd104 && x >= 10'd64 && x < 10'd608) begin
-            textX = {6'd0, x[3:0]};
+        end else if (y >= 10'd88 && y < 10'd104) begin
             textY = y - 10'd88;
-            case (x[9:4])
-                6'd4:  textLine[127:120] = "F";
-                6'd10: begin textLine[127:120] = "P"; ink = PLAYER; end
-                6'd16: begin textLine[127:120] = "G"; ink = GUARD; end
-                6'd22: textLine[127:120] = "1";
-                6'd28: textLine[127:120] = "2";
-                6'd34: begin textLine[127:120] = "$"; ink = MONEY; end
-                default: textLine[127:120] = " ";
-            endcase
+            if (x >= 10'd168 && x < 10'd328) begin
+                textLine = "ELEVATOR A      ";
+                textX = x - 10'd168;
+            end else if (x >= 10'd328 && x < 10'd488) begin
+                textLine = "ELEVATOR B      ";
+                textX = x - 10'd328;
+            end
         end
         textIndex = textX[7:4];
     end

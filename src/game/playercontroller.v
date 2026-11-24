@@ -1,5 +1,5 @@
 
-module playercontroller(clk, reset, playerboard1, playerboard2, currentfloor1, currentfloor2, targetfloor, playerfloor, playerstopped, arrived);
+module playercontroller(clk, reset, playerboard1, playerboard2, currentfloor1, currentfloor2, targetfloor, playerfloor, playerstopped, arrived, riding1, riding2);
 
 //purpose: track player floor and which elevator the player is riding
 
@@ -23,6 +23,7 @@ input[2:0] currentfloor1, currentfloor2, targetfloor;
 output reg[2:0] playerfloor;
 output[0:0] playerstopped;
 output reg[0:0] arrived;
+output riding1, riding2;
 
 //PLAYER STATE FSM
 parameter[1:0] waiting = 2'b00, elevator1 = 2'b01, elevator2 = 2'b10;
@@ -77,5 +78,7 @@ end
 
 //OUTPUT LOGIC
 assign playerstopped = (currentstate == waiting);
+assign riding1 = (currentstate == elevator1);
+assign riding2 = (currentstate == elevator2);
 
 endmodule

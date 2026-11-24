@@ -11,7 +11,8 @@ module elevator_trip #(
     input [23:0] boardingDest,
     output reserved, npcPickupWaiting, playerBoard,
     output reg carMove,
-    output reg [2:0] carTarget
+    output reg [2:0] carTarget,
+    output [3:0] npcRiders
 );
     localparam [2:0] IDLE = 3'd0, TO_PICKUP = 3'd1, WAIT_NPC = 3'd2,
                      BOARD_NPC = 3'd3, BOARD_PLAYER = 3'd4, NEXT_STOP = 3'd5,
@@ -25,6 +26,7 @@ module elevator_trip #(
     assign reserved = (state != IDLE) || assigned;
     assign npcPickupWaiting = state == WAIT_NPC;
     assign playerBoard = state == BOARD_PLAYER && boardingTimer == PICKUP_CYCLES - 26'd1;
+    assign npcRiders = playerTrip ? 4'd0 : stopsLeft;
 
     always @(posedge clock) begin
         if (!reset) begin
@@ -70,11 +72,12 @@ module elevator_trip #(
                     carTarget <= stops[2:0];
                     carMove <= 1'b1;
                     stops <= stops >> 3;
-                    stopsLeft <= stopsLeft - 4'd1;
                     state <= TO_STOP;
                 end
-                TO_STOP: if (!carMove && !carBusy && currentFloor == carTarget)
+                TO_STOP: if (!carMove && !carBusy && currentFloor == carTarget) begin
+                    stopsLeft <= stopsLeft - 4'd1;
                     state <= NEXT_STOP;
+                end
                 default: state <= IDLE;
             endcase
         end
