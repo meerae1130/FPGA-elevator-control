@@ -59,7 +59,7 @@ always @(*)begin
     else if(floorvalid) nextstate = math;
 
     math: if(caught) nextstate = lose;
-    else if (wrong && failcount == 2) nextstate = lose;
+    else if (wrong && failcount == 2'd3) nextstate = lose;
     else if (correct) nextstate = moving;
 
 
@@ -101,7 +101,7 @@ always @(*) begin
     end
 
     // generate math question after a failed (incorrect) ans
-    if(currentstate == math && wrong && failcount < 2 && !caught)
+    if(currentstate == math && wrong && failcount < 2'd3 && !caught)
     newquestion = 1;
 
 
@@ -126,5 +126,3 @@ end
 
 assign gamestate = currentstate; // output the game's current state
 endmodule
-
-// NEED WRONG AND FAILCOUNT AS OUPUTS IN MATH MODULE

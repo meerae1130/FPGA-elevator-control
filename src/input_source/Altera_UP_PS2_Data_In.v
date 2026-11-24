@@ -23,7 +23,8 @@ module Altera_UP_PS2_Data_In (
 
 	// Outputs
 	received_data,
-	received_data_en			// If 1 - new data has been received
+	received_data_en,
+    frame_complete
 );
 
 
@@ -52,6 +53,8 @@ input			 	ps2_data;
 output reg	[7:0]	received_data;
 
 output reg		 	received_data_en;
+output reg frame_complete;
+reg parity_ok;
 
 /*****************************************************************************
  *                           Constant Declarations                           *
@@ -95,10 +98,10 @@ begin
 	PS2_STATE_0_IDLE:
 		begin
 			if ((wait_for_incoming_data == 1'b1) && 
-					(received_data_en == 1'b0))
+					(frame_complete == 1'b0))
 				ns_ps2_receiver = PS2_STATE_1_WAIT_FOR_DATA;
 			else if ((start_receiving_data == 1'b1) && 
-					(received_data_en == 1'b0))
+					(frame_complete == 1'b0))
 				ns_ps2_receiver = PS2_STATE_2_DATA_IN;
 			else
 				ns_ps2_receiver = PS2_STATE_0_IDLE;
@@ -175,13 +178,20 @@ end
 
 always @(posedge clk)
 begin
-	if (reset == 1'b1)
-		received_data_en		<= 1'b0;
-	else if ((s_ps2_receiver == PS2_STATE_4_STOP_IN) &&
-			(ps2_clk_posedge == 1'b1))
-		received_data_en	<= 1'b1;
-	else
-		received_data_en	<= 1'b0;
+    if (reset) begin
+        parity_ok <= 1'b0;
+        received_data_en <= 1'b0;
+        frame_complete <= 1'b0;
+    end else begin
+        received_data_en <= 1'b0;
+        frame_complete <= 1'b0;
+        if (s_ps2_receiver == PS2_STATE_3_PARITY_IN && ps2_clk_posedge)
+            parity_ok <= ^{data_shift_reg, ps2_data};
+        if (s_ps2_receiver == PS2_STATE_4_STOP_IN && ps2_clk_posedge) begin
+            frame_complete <= 1'b1;
+            received_data_en <= parity_ok && ps2_data;
+        end
+    end
 end
 
 /*****************************************************************************

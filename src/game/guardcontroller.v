@@ -68,6 +68,8 @@ always @(posedge clk) begin
     end
 end
 
+reg [27:0] counter;
+
 //GUARD floor
 always @(posedge clk)begin
     if(!reset) begin
@@ -85,7 +87,6 @@ end
 
 //timer logic
 
-reg [27:0] counter;
 // 3 seconds speed for guard
 always @(posedge clk) begin
     if (!reset) begin

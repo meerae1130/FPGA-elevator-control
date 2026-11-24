@@ -1,11 +1,13 @@
 // math game 
-module math (clock, start, reset, playerans, enter, A, B, operator, correct, failed);
+module math (clock, start, reset, playerans, enter, A, B, operator, correct, failed, wrong, failcount);
     input clock, start, reset, enter;
     input signed [7:0] playerans; // -9 to 81 == 8 bits required minimally to express all numbers in set 
 
     // start will be 1 when user requests elevator (at KEY1 or equivalent)
 
     output reg correct, failed;     // user entered correct answer? / 3 consecutive fails? 
+    output reg wrong;
+    output reg [1:0] failcount;
     output reg [3:0] A, B;          // random number A, B for displaying in other modules
     output reg [1:0] operator;      // random operator, for displaying in other modules 
 
@@ -20,7 +22,6 @@ module math (clock, start, reset, playerans, enter, A, B, operator, correct, fai
     );
 
     reg signed [7:0] ans;           // correct answer, player's has to match this 
-    reg[1:0] failcounter; 
 
     parameter                       // 6 states -> 3bits minimally req. therefore 3 ff
         idle = 3'b000, 
@@ -36,11 +37,13 @@ module math (clock, start, reset, playerans, enter, A, B, operator, correct, fai
             A <= 4'b0000;
             B <= 4'b0000;
             operator <= 2'b00;
-            correct <= 1'b0; 
-            failcounter <= 2'b00;
+            correct <= 1'b0;
+            wrong <= 1'b0;
+            failcount <= 2'b00;
             failed <= 1'b0;
 
-        end else begin 
+        end else begin
+            wrong <= 1'b0;
             case (y) 
                 idle: begin
                     if (start && !failed) begin
@@ -82,16 +85,13 @@ module math (clock, start, reset, playerans, enter, A, B, operator, correct, fai
 
                             // return correct 
                             correct <= 1'b1;
-                            failcounter <= 2'b00;   // reset when fail streak lost 
-                        end else if (failcounter == 2'b10)begin 
-                            // condition: player got it wrong, and they alr have 2 consecutive fail streak
-                            // game should end -> in this module, just raise failed flag
-
-                            failed <= 1'b1;
-                            y <= idle; 
+                            failcount <= 2'b00;   // reset when fail streak lost
                         end else begin
-                            failcounter <= failcounter + 1'b1;
-                            // state should also stay the same at waitans 
+                            wrong <= 1'b1;
+                            failcount <= failcount + 2'd1;
+                            if (failcount == 2'd2)
+                                failed <= 1'b1;
+                            y <= idle;
                         end
                     end 
                     

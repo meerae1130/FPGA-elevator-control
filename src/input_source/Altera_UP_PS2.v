@@ -90,6 +90,7 @@ localparam	PS2_STATE_0_IDLE			= 3'h0,
  *                 Internal wires and registers Declarations                 *
  *****************************************************************************/
 // Internal Wires
+wire frame_complete;
 wire			ps2_clk_posedge;
 wire			ps2_clk_negedge;
 
@@ -137,7 +138,7 @@ begin
 		end
 	PS2_STATE_1_DATA_IN:
 		begin
-			if ((received_data_en == 1'b1)/* && (ps2_clk_posedge == 1'b1)*/)
+			if ((frame_complete == 1'b1)/* && (ps2_clk_posedge == 1'b1)*/)
 				ns_ps2_transceiver = PS2_STATE_0_IDLE;
 			else
 				ns_ps2_transceiver = PS2_STATE_1_DATA_IN;
@@ -161,7 +162,7 @@ begin
 		end
 	PS2_STATE_4_END_DELAYED:	
 		begin
-			if (received_data_en == 1'b1)
+			if (frame_complete == 1'b1)
 			begin
 				if (send_command == 1'b0)
 					ns_ps2_transceiver = PS2_STATE_0_IDLE;
@@ -242,7 +243,8 @@ Altera_UP_PS2_Data_In PS2_Data_In (
 
 	// Outputs
 	.received_data					(received_data),
-	.received_data_en				(received_data_en)
+	.received_data_en				(received_data_en),
+    .frame_complete(frame_complete)
 );
 
 Altera_UP_PS2_Command_Out PS2_Command_Out (

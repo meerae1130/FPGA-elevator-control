@@ -117,6 +117,8 @@ valid <= 0; // default
     end
 end
 
+reg signed [7:0] answer; // store final  ans to give back to math module
+
 // MULTIDIGIT ANSWER LOGIC
 // if more than 1 digit entered -> multiple first digit by 10, add second digit
 
@@ -128,7 +130,11 @@ always @(posedge clk) begin
     end else begin
     
     if(valid == 1 && gamestate == 3'b010) begin
-        answer <= answer*10 + digit;
+        // Keep an out-of-range value distinct from every valid math result.
+        if (answer > 8'sd9)
+            answer <= 8'sd127;
+        else
+            answer <= answer * 8'd10 + digit;
     end else if(receiveddata == 8'h5A && receiveddataen == 1 && keyReleased == 0 && gamestate == 3'b010) begin
             answer<=8'b00000000;
         end
@@ -163,7 +169,6 @@ always @(posedge clk)begin
     end
 end
 
-reg signed [7:0] answer; // store final  ans to give back to math module
 always @(posedge clk)begin
 
     if(!reset)begin

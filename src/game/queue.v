@@ -43,7 +43,7 @@ module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor
 
     output outreqvalid, newreqready;
     output[2:0] outcurr; 
-    output reg [3:0] boardingCount;
+    output [3:0] boardingCount;
     output [23:0] boardingDest;
     output reg pickupBusy;
     
@@ -80,12 +80,7 @@ module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor
     // Only the first boardingCount destination slots are valid.
     assign boardingDest = boardGroup ? waitingDest[boardingFloor] : 24'd0;
 
-    always @(*) begin
-        if (boardGroup)
-            boardingCount = waitingCount[boardingFloor];
-        else
-            boardingCount = 4'd0;
-    end
+    assign boardingCount = boardGroup ? waitingCount[boardingFloor] : 4'd0;
 
     fifo FIFO1(clock, reset, enqueue, newcurr, inready,
                outreqvalid, outcurr, reqaccepted);
