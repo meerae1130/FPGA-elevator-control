@@ -14,7 +14,7 @@ module main_controller(CLOCK_50, KEY, PS2_CLK, PS2_DAT,
 input CLOCK_50;
 inout PS2_CLK, PS2_DAT;
 input [3:0] KEY;
-output [2:0] VGA_R, VGA_G, VGA_B;
+output [7:0] VGA_R, VGA_G, VGA_B;
 output VGA_CLK, VGA_HS, VGA_VS, VGA_BLANK_N, VGA_SYNC_N;
 
 // KEYBOARD CONNECTION WIRES
@@ -163,12 +163,18 @@ always @(posedge CLOCK_50) begin
 end
 assign moneyfloor = savedMoneyFloor;
 
+// Expand the 3-bit channels to cover the full DE1-SoC VGA DAC range.
+wire [2:0] red9, green9, blue9;
+assign VGA_R = {red9, red9, red9[2:1]};
+assign VGA_G = {green9, green9, green9[2:1]};
+assign VGA_B = {blue9, blue9, blue9[2:1]};
+
 vga_display display (
     .clock(CLOCK_50), .reset(KEY[0]), .gamestate(gamestate),
     .playerfloor(playerfloor), .guardfloor(guardfloor), .moneyfloor(moneyfloor),
     .targetfloor(targetfloor), .currentfloor1(currentfloor1), .currentfloor2(currentfloor2),
     .busy1(reserved1), .busy2(reserved2), .A(A), .B(B), .operator(operator),
-    .VGA_R(VGA_R), .VGA_G(VGA_G), .VGA_B(VGA_B), .VGA_CLK(VGA_CLK),
+    .VGA_R(red9), .VGA_G(green9), .VGA_B(blue9), .VGA_CLK(VGA_CLK),
     .VGA_HS(VGA_HS), .VGA_VS(VGA_VS), .VGA_BLANK_N(VGA_BLANK_N), .VGA_SYNC_N(VGA_SYNC_N)
 );
 
