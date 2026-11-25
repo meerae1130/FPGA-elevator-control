@@ -28,14 +28,14 @@ output reg[1:0] elevatordirection;
 // must know when moving is allowed -> only when move = 1 ( correct ans to math )
 reg moving; // tells elevator to keep moving if move  = 1 (remembers it)
 assign busy = moving;
-reg [2:0] savedtarget; //to remember destination when it receives move (prevents changing destinations halfway through trips)
+    reg [2:0] savedtarget; //to remember destination when it receives move (prevents changing destinations halfway through trips, which is what targetfloor could do)
 
 assign arrival = (currentfloor == savedtarget); //  arrival is 1 when currentlfoor = savedtarget
 
 always @(posedge clk) begin
     if(!reset)
     moving <= 0;
-    else if(move == 1 && moving == 0) 
+    else if(move == 1 && moving == 0) // accept movement request if not already moving
     moving <= (currentfloor != targetfloor);
     else if(arrival == 1)
     moving <= 0;
