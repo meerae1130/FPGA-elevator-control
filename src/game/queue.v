@@ -35,7 +35,7 @@
 */
 
 module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor, newreqvalid, outcurr, outreqvalid, boardingCount, boardingDest, newreqready, pickupBusy, waitingCounts);
-    parameter [25:0] PICKUP_CYCLES = 26'd50_000_000; // One second at 50 MHz.
+    parameter [25:0] PICKUP_CYCLES = 26'd50_000_000; // one second at 50 MHz.
     // one second per floor (when boarding) number of persons does not matter
     // just one second per boarding event 
     input clock, reset, newreqvalid, reqaccepted, pickupvalid;
@@ -46,17 +46,21 @@ module queue (clock, reset, newcurr, dest, reqaccepted, pickupvalid, pickupfloor
     output [3:0] boardingCount;
     output [23:0] boardingDest;
     output reg pickupBusy;
-    output [31:0] waitingCounts; // Four bits per floor, floor 0 in bits 3:0.
+    output [31:0] waitingCounts; // 4 bits per floor, floor 0 in bits 3:0
     
     wire enqueue, inready; 
 
     reg [3:0] waitingCount [0:7];
-    genvar displayFloor;
-    generate
-        for (displayFloor = 0; displayFloor < 8; displayFloor = displayFloor + 1) begin : floorCounts
-            assign waitingCounts[4 * displayFloor +: 4] = waitingCount[displayFloor];
-        end
-    endgenerate
+
+    assign waitingCounts[3:0]   = waitingCount[0];
+    assign waitingCounts[7:4]   = waitingCount[1];
+    assign waitingCounts[11:8]  = waitingCount[2];
+    assign waitingCounts[15:12] = waitingCount[3];
+    assign waitingCounts[19:16] = waitingCount[4];
+    assign waitingCounts[23:20] = waitingCount[5];
+    assign waitingCounts[27:24] = waitingCount[6];
+    assign waitingCounts[31:28] = waitingCount[7];
+    
     reg [23:0] waitingDest [0:7];
     reg [7:0] pickupAssigned;
     reg [2:0] boardingFloor;
