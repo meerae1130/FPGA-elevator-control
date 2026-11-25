@@ -3,13 +3,13 @@ module collision(playerfloor, guardfloor, playerstopped, guardstopped, caught);
 //purpose: detect if player and guard land stop on the same floor -> player loses and game ends
 
 //INPUTS
-//playerfloor = floor player is currently on
-//guardfloor = floor guard is currently on
-//playerstopped = indicates whether the player is stopped
-// guardstopped = indicates whether guard is stopped
+//playerfloor = floor player is currently on, receive from playercontroller
+//guardfloor = floor guard is currently on, receive from guardcontroller
+//playerstopped = indicates whether the player is stopped, receive from playercontroller
+// guardstopped = indicates whether guard is stopped, receive from guardcontroller
 
 //OUTPUTS
-//caught = if both are stopped on same floor, caught = 1 and player loses
+  //caught = if both are stopped on same floor, caught = 1 and player loses, send to gamecontroller
 
 input[0:0] playerstopped, guardstopped;
 input[2:0] playerfloor, guardfloor;
