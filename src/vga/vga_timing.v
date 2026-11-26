@@ -1,4 +1,5 @@
-// 640 x 480 VGA timing at a 25 MHz pixel clock derived from CLOCK_50.
+// 640 x 480 VGA timing at a 25 MHz pixel clock derived from CLOCK_50
+// basically tells me where the current cursor/pixel is 
 module vga_timing (
     input clock, reset,
     output reg VGA_CLK,

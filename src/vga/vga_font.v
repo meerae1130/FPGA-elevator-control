@@ -1,8 +1,11 @@
+// module provides shapes and letters 
+
 // Five columns and seven rows per glyph, most significant bit at top left.
 module vga_font (input [7:0] character, input [2:0] x, y, output pixel);
     reg [34:0] glyph;
     always @(*) begin
         case (character)
+            // 5*7, derivation on goodnote its in hexadecimal 
             "0": glyph = 35'h3A33AE62E;
             "1": glyph = 35'h11842108E;
             "2": glyph = 35'h3A211111F;

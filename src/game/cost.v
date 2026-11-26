@@ -19,17 +19,10 @@ output reg [2:0] cost;
 
 /* game rules
 
-    to request elevator, (submitting part with KEY1), user must solve a math problem 
+    to request elevator, (submitting part with ENTER), user must solve a math problem 
 
     minigame each floor
     difficulty of the problem will increase (maybe) 
-
-    we will: 
-        1. make security 
-        -> make another elevator 
-        -> C is not callable, moves up and down at a certian speed, destination updates to player's current location every clock cycle 
-        
-
 */
 
 always @(*) begin

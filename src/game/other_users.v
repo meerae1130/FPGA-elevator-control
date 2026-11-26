@@ -38,8 +38,9 @@ module other_users (clock, reset, current, dest, requestValid);
                 twosec       <= 27'd0;
                 current      <= pickup_sample;
 
+                // in case where the pickup and destination randomly generated are equal
                 if (dest_sample == pickup_sample) begin
-                    dest <= dest_sample + 3'd1;  // Floor 7 wraps to floor 0.
+                    dest <= dest_sample + 3'd1;  // floor 7 wraps to floor 0.
                 end else begin
                     dest <= dest_sample;
                 end
